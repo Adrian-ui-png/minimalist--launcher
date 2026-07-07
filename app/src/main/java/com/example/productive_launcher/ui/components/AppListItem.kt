@@ -37,7 +37,8 @@ fun AppListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isFavorite: Boolean = false,
-    onFavoriteToggle: () -> Unit = {}
+    onFavoriteToggle: () -> Unit = {},
+    dragHandle: @Composable (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -58,8 +59,12 @@ fun AppListItem(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
+        if (dragHandle != null) {
+            dragHandle()
+        }
     }
 
     DropdownMenu(
@@ -82,7 +87,7 @@ fun AppListItem(
 }
 
 @Composable
-private fun AppIcon(
+fun AppIcon(
     drawable: Drawable?,
     modifier: Modifier = Modifier
 ) {

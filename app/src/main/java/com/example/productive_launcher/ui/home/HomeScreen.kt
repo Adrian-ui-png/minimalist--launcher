@@ -1,9 +1,15 @@
 package com.example.productive_launcher.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,17 +17,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -36,17 +43,20 @@ import com.example.productive_launcher.ui.components.SearchBar
 fun HomeScreen(
     viewModel: LauncherViewModel,
     onAppClick: (AppInfo) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val favoriteApps by viewModel.favoriteApps.collectAsState()
+    val recentApps by viewModel.recentApps.collectAsState()
     val otherApps by viewModel.otherApps.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredApps by viewModel.filteredApps.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val showFavoritesSection by viewModel.showFavorites.collectAsState()
+    val showRecentAppsSection by viewModel.showRecentApps.collectAsState()
     val isSearching = searchQuery.isNotBlank()
-    val favoriteNames = remember(favoriteApps) {
-        favoriteApps.mapTo(HashSet()) { it.packageName }
-    }
+
+    val hasFavorites = favoriteApps.isNotEmpty()
 
     LazyColumn(
         modifier = modifier
@@ -57,7 +67,19 @@ fun HomeScreen(
     ) {
         item(key = "header") {
             Spacer(modifier = Modifier.height(8.dp))
-            GreetingHeader()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                GreetingHeader(modifier = Modifier.weight(1f))
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(32.dp))
             SearchBar(
                 query = searchQuery,
@@ -85,59 +107,91 @@ fun HomeScreen(
                     EmptySearchState()
                 }
             }
-
-            items(
+            itemsIndexed(
                 items = filteredApps,
-                key = { it.packageName }
-            ) { app ->
+                key = { _, app -> app.packageName }
+            ) { _, app ->
+                val isFav = app.packageName in favoriteApps.map { it.packageName }
                 AppListItem(
                     appName = app.appName,
                     icon = app.icon,
                     onClick = { onAppClick(app) },
-                    isFavorite = app.packageName in favoriteNames,
-                    onFavoriteToggle = { viewModel.toggleFavorite(app.packageName) }
+                    isFavorite = isFav,
+                    onFavoriteToggle = {
+                        if (isFav) viewModel.removeFavorite(app.packageName)
+                        else viewModel.addFavorite(app.packageName)
+                    }
                 )
             }
         } else {
-            if (favoriteApps.isNotEmpty()) {
+            if (showFavoritesSection && hasFavorites) {
                 item(key = "fav_header") {
-                    SectionTitle(text = "Favorites")
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
+                    ) {
+                        SectionTitle(text = "Favorites")
+                    }
                 }
 
-                items(
+                itemsIndexed(
                     items = favoriteApps,
-                    key = { "fav_${it.packageName}" }
-                ) { app ->
+                    key = { _, app -> "fav_${app.packageName}" }
+                ) { _, app ->
                     AppListItem(
                         appName = app.appName,
                         icon = app.icon,
                         onClick = { onAppClick(app) },
                         isFavorite = true,
-                        onFavoriteToggle = { viewModel.toggleFavorite(app.packageName) }
+                        onFavoriteToggle = { viewModel.removeFavorite(app.packageName) }
+                    )
+                }
+            }
+
+            if (showRecentAppsSection && recentApps.isNotEmpty()) {
+                item(key = "recent_header") {
+                    SectionTitle(text = "Recent")
+                }
+
+                itemsIndexed(
+                    items = recentApps,
+                    key = { _, app -> "recent_${app.packageName}" }
+                ) { _, app ->
+                    val isFav = app.packageName in favoriteApps.map { it.packageName }
+                    AppListItem(
+                        appName = app.appName,
+                        icon = app.icon,
+                        onClick = { onAppClick(app) },
+                        isFavorite = isFav,
+                        onFavoriteToggle = {
+                            if (isFav) viewModel.removeFavorite(app.packageName)
+                            else viewModel.addFavorite(app.packageName)
+                        }
                     )
                 }
             }
 
             if (otherApps.isNotEmpty()) {
                 item(key = "apps_header") {
-                    SectionTitle(text = "Apps")
+                    SectionTitle(text = "All Apps")
                 }
 
-                items(
+                itemsIndexed(
                     items = otherApps,
-                    key = { it.packageName }
-                ) { app ->
+                    key = { _, app -> app.packageName }
+                ) { _, app ->
                     AppListItem(
                         appName = app.appName,
                         icon = app.icon,
                         onClick = { onAppClick(app) },
                         isFavorite = false,
-                        onFavoriteToggle = { viewModel.toggleFavorite(app.packageName) }
+                        onFavoriteToggle = { viewModel.addFavorite(app.packageName) }
                     )
                 }
             }
 
-            if (favoriteApps.isEmpty() && otherApps.isEmpty()) {
+            if (!hasFavorites && otherApps.isEmpty()) {
                 item(key = "empty_all") {
                     Box(
                         modifier = Modifier

@@ -20,28 +20,33 @@ class FavoritesDataStore(private val context: Context) {
 
     private val favoritesKey = stringPreferencesKey("favorite_packages")
 
-    val favoritesFlow: Flow<Set<String>> = context.favoritesDataStore.data
+    val favoritesFlow: Flow<List<String>> = context.favoritesDataStore.data
         .map { prefs ->
             val raw = prefs[favoritesKey] ?: ""
-            if (raw.isBlank()) emptySet() else raw.split(",").toSet()
+            if (raw.isBlank()) emptyList() else raw.split(",")
         }
         .distinctUntilChanged()
         .flowOn(Dispatchers.IO)
 
-    suspend fun toggleFavorite(packageName: String) {
+    suspend fun addFavorite(packageName: String) {
         context.favoritesDataStore.edit { prefs ->
-            val current = prefs[favoritesKey] ?: ""
-            val currentSet = if (current.isBlank()) {
-                emptySet()
-            } else {
-                current.split(",").toSet()
-            }
-            val updated = if (packageName in currentSet) {
-                currentSet - packageName
-            } else {
-                currentSet + packageName
-            }
-            prefs[favoritesKey] = if (updated.isEmpty()) "" else updated.joinToString(",")
+            val raw = prefs[favoritesKey] ?: ""
+            val current = if (raw.isBlank()) mutableListOf()
+            else raw.split(",").toMutableList()
+            if (packageName in current) return@edit
+            current.add(packageName)
+            prefs[favoritesKey] = current.joinToString(",")
         }
     }
+
+    suspend fun removeFavorite(packageName: String) {
+        context.favoritesDataStore.edit { prefs ->
+            val raw = prefs[favoritesKey] ?: ""
+            if (raw.isBlank()) return@edit
+            val current = raw.split(",").toMutableList()
+            if (!current.remove(packageName)) return@edit
+            prefs[favoritesKey] = if (current.isEmpty()) "" else current.joinToString(",")
+        }
+    }
+
 }
