@@ -52,7 +52,7 @@ fun IntentSelectionSection(
         Spacer(modifier = Modifier.height(48.dp))
 
         AppIconLarge(
-            drawable = state.appIcon,
+            packageName = state.packageName,
             contentDescription = state.appName
         )
 

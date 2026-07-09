@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -39,8 +41,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    val isSearching: StateFlow<Boolean> = _searchQuery
+        .map { it.isNotBlank() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val favoritePackageNames: StateFlow<List<String>> = favoritesRepository.favoritesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val favoritePackageSet: StateFlow<Set<String>> = favoritesRepository.favoritesFlow
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val favoriteApps: StateFlow<List<AppInfo>> = combine(
         _apps, favoritePackageNames
@@ -84,6 +94,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             apps.filter { it.appName.lowercase().contains(lowerQuery) }
         }
     }.distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _isLoading = MutableStateFlow(true)

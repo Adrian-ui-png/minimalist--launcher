@@ -1,6 +1,7 @@
 package com.example.productive_launcher.ui.delay
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,7 +65,9 @@ fun DelaySettingsScreen(
     val installedApps = remember { appRepository.getInstalledApps() }
     val protectedApps by mindfulDelayRepository.protectedAppsFlow.collectAsState(initial = emptySet())
 
+    Log.d("Wallpaper", "THEME CHECK: DelaySettingsScreen Scaffold containerColor=Color.Transparent")
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -117,7 +121,7 @@ fun DelaySettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AppIcon(
-                        drawable = app.icon,
+                        packageName = app.packageName,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                     )

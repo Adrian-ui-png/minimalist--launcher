@@ -52,8 +52,8 @@ class DelayViewModel(
             appInfo = allApps.find { it.packageName == packageName }
             if (appInfo != null) {
                 _uiState.value = MindfulDelayUiState.IntentSelection(
+                    packageName = appInfo!!.packageName,
                     appName = appInfo!!.appName,
-                    appIcon = appInfo!!.icon,
                     selectedIntent = null,
                     isContinueEnabled = false
                 )
@@ -107,8 +107,8 @@ class DelayViewModel(
         val info = appInfo
         if (info != null) {
             _uiState.value = MindfulDelayUiState.IntentSelection(
+                packageName = info.packageName,
                 appName = info.appName,
-                appIcon = info.icon,
                 selectedIntent = null,
                 isContinueEnabled = false
             )

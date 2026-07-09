@@ -1,11 +1,12 @@
 package com.example.productive_launcher.ui.components
 
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
+import android.content.Context
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,15 +27,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.productive_launcher.data.local.IconCache
+import com.example.productive_launcher.data.repository.AppRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppListItem(
     appName: String,
-    icon: Drawable?,
+    packageName: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isFavorite: Boolean = false,
@@ -49,11 +57,11 @@ fun AppListItem(
                 onClick = onClick,
                 onLongClick = { showMenu = true }
             )
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppIcon(drawable = icon)
-        Spacer(modifier = Modifier.width(16.dp))
+        AppIcon(packageName = packageName)
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = appName,
             style = MaterialTheme.typography.bodyLarge,
@@ -88,26 +96,47 @@ fun AppListItem(
 
 @Composable
 fun AppIcon(
-    drawable: Drawable?,
+    packageName: String,
     modifier: Modifier = Modifier
 ) {
-    val imageBitmap = remember(drawable) {
-        when (drawable) {
-            is BitmapDrawable -> drawable.bitmap.asImageBitmap()
-            else -> {
-                val bitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
-                drawable?.setBounds(0, 0, 48, 48)
-                drawable?.draw(android.graphics.Canvas(bitmap))
-                bitmap.asImageBitmap()
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(packageName) {
+        val cached = IconCache.get(packageName)
+        if (cached != null) {
+            imageBitmap = cached
+        } else {
+            val bitmap = withContext(Dispatchers.IO) {
+                loadAndCacheIcon(context, packageName)
             }
+            imageBitmap = bitmap
         }
     }
 
-    Image(
-        bitmap = imageBitmap,
-        contentDescription = null,
-        modifier = modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-    )
+    val bitmap = imageBitmap
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        )
+    }
+}
+
+private suspend fun loadAndCacheIcon(context: Context, packageName: String): ImageBitmap? {
+    val appRepo = AppRepository(context.packageManager)
+    val drawable = appRepo.getIcon(packageName) ?: return null
+    IconCache.put(packageName, drawable)
+    return IconCache.get(packageName)
 }

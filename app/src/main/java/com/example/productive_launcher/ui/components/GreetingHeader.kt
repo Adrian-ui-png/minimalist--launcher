@@ -48,16 +48,16 @@ fun GreetingHeader(modifier: Modifier = Modifier) {
         Text(
             text = getGreeting(),
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = currentTime,
             style = MaterialTheme.typography.displayLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = currentDay,
             style = MaterialTheme.typography.labelLarge,

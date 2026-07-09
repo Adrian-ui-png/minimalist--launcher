@@ -1,13 +1,11 @@
 package com.example.productive_launcher.mindful
 
-import android.graphics.drawable.Drawable
-
 sealed interface MindfulDelayUiState {
     data object Loading : MindfulDelayUiState
 
     data class IntentSelection(
+        val packageName: String,
         val appName: String,
-        val appIcon: Drawable?,
         val selectedIntent: String?,
         val isContinueEnabled: Boolean
     ) : MindfulDelayUiState

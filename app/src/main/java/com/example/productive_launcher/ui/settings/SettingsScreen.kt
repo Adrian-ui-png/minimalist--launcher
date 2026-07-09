@@ -6,17 +6,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Widgets
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,7 +42,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.productive_launcher.data.model.ThemeMode
 
@@ -63,34 +74,14 @@ fun SettingsScreen(
                 @Suppress("DEPRECATION")
                 context.packageManager.getPackageInfo(context.packageName, 0)
             }
-            info.versionName ?: "—"
+            info.versionName ?: "\u2014"
         } catch (_: Exception) {
-            "—"
-        }
-    }
-    val versionCode = remember {
-        try {
-            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(
-                    context.packageName,
-                    PackageManager.PackageInfoFlags.of(0)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(context.packageName, 0)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                info.longVersionCode.toString()
-            } else {
-                @Suppress("DEPRECATION")
-                info.versionCode.toString()
-            }
-        } catch (_: Exception) {
-            "—"
+            "\u2014"
         }
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -108,8 +99,9 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -119,134 +111,149 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .padding(horizontal = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            item {
-                sectionTitle("Appearance")
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Theme",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSection(
+                    icon = Icons.Outlined.Palette,
+                    title = "Appearance"
                 ) {
-                    ThemeMode.entries.forEach { mode ->
-                        ThemeOption(
-                            label = mode.name,
-                            selected = themeMode == mode,
-                            onClick = { viewModel.setThemeMode(mode) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    ThemeSection(themeMode = themeMode, onThemeSelect = viewModel::setThemeMode)
                 }
-                Spacer(modifier = Modifier.height(24.dp))
             }
 
             item {
-                sectionTitle("Mindful Delay")
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Delay Duration",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                SettingsSection(
+                    icon = Icons.Outlined.Timer,
+                    title = "Mindful Delay"
                 ) {
-                    listOf(1, 3, 5, 10).forEach { seconds ->
-                        ThemeOption(
-                            label = "${seconds}s",
-                            selected = delayDuration == seconds,
-                            onClick = { viewModel.setDelayDuration(seconds) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onNavigateToProtectedApps)
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Protected Apps",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                    DelayDurationSection(
+                        delayDuration = delayDuration,
+                        onDelaySelect = viewModel::setDelayDuration
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SettingsNavItem(
+                        icon = Icons.Outlined.Lock,
+                        label = "Protected Apps",
+                        onClick = onNavigateToProtectedApps
                     )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
             }
 
             item {
-                sectionTitle("Launcher")
+                SettingsSection(
+                    icon = Icons.Outlined.Widgets,
+                    title = "Launcher"
+                ) {
+                    SettingsToggle(
+                        label = "Show Favorites",
+                        checked = showFavorites,
+                        onCheckedChange = viewModel::setShowFavorites
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsToggle(
+                        label = "Show Recent Apps",
+                        checked = showRecentApps,
+                        onCheckedChange = viewModel::setShowRecentApps
+                    )
+                }
             }
 
             item {
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsToggle(
-                    label = "Show Favorites",
-                    checked = showFavorites,
-                    onCheckedChange = viewModel::setShowFavorites
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                SettingsToggle(
-                    label = "Show Recent Apps",
-                    checked = showRecentApps,
-                    onCheckedChange = viewModel::setShowRecentApps
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                SettingsSection(
+                    icon = Icons.Outlined.Info,
+                    title = "About"
+                ) {
+                    AboutRow(label = "Version", value = versionName)
+                }
             }
 
             item {
-                sectionTitle("About")
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                AboutRow(label = "App Version", value = versionName)
-                Spacer(modifier = Modifier.height(4.dp))
-                AboutRow(label = "Build Number", value = versionCode)
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
 @Composable
-private fun sectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
+private fun SettingsSection(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(16.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ThemeSection(
+    themeMode: ThemeMode,
+    onThemeSelect: (ThemeMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThemeMode.entries.forEach { mode ->
+            ThemeOption(
+                label = when (mode) {
+                    ThemeMode.SYSTEM -> "Auto"
+                    ThemeMode.LIGHT -> "Light"
+                    ThemeMode.DARK -> "Dark"
+                },
+                selected = themeMode == mode,
+                onClick = { onThemeSelect(mode) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DelayDurationSection(
+    delayDuration: Int,
+    onDelaySelect: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(1, 3, 5, 10).forEach { seconds ->
+            ThemeOption(
+                label = "${seconds}s",
+                selected = delayDuration == seconds,
+                onClick = { onDelaySelect(seconds) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
 }
 
 @Composable
@@ -257,9 +264,9 @@ private fun ThemeOption(
     modifier: Modifier = Modifier
 ) {
     val surfaceColor = if (selected) {
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.onSurface
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        Color.Transparent
     }
     val contentColor = if (selected) {
         MaterialTheme.colorScheme.surface
@@ -269,17 +276,16 @@ private fun ThemeOption(
 
     Box(
         modifier = modifier
-            .height(40.dp)
+            .height(36.dp)
             .clickable(onClick = onClick)
-            .padding(2.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(surfaceColor),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor.copy(alpha = if (selected) 1f else 0.6f)
         )
     }
 }
@@ -293,7 +299,8 @@ private fun SettingsToggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -305,7 +312,47 @@ private fun SettingsToggle(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors()
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                checkedThumbColor = MaterialTheme.colorScheme.surface,
+                uncheckedTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        )
+    }
+}
+
+@Composable
+private fun SettingsNavItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -318,19 +365,19 @@ private fun AboutRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
