@@ -62,6 +62,7 @@ fun AppPagerScreen(
                             pagerState.animateScrollToPage(1)
                         }
                     },
+                    onAppClick = onAppClick,
                     modifier = Modifier.fillMaxSize()
                 )
                 1 -> AppDrawer(
