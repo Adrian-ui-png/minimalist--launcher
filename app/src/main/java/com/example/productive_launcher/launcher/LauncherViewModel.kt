@@ -36,6 +36,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     )
     private val settingsRepository = SettingsRepository(SettingsDataStore(application))
 
+    private val _isFocusActive = MutableStateFlow(false)
+    val isFocusActive = _isFocusActive.asStateFlow()
+
+    private val _wallpaperUpdateTrigger = MutableStateFlow(System.currentTimeMillis())
+    val wallpaperUpdateTrigger = _wallpaperUpdateTrigger.asStateFlow()
+
+    fun notifyWallpaperChanged() {
+        _wallpaperUpdateTrigger.value = System.currentTimeMillis()
+    }
+
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
 
     private val _searchQuery = MutableStateFlow("")
@@ -52,31 +62,38 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    val protectedApps: StateFlow<Set<String>> = mindfulDelayRepository.protectedAppsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     val favoriteApps: StateFlow<List<AppInfo>> = combine(
-        _apps, favoritePackageNames
-    ) { apps, favPkgs ->
+        _apps, favoritePackageNames, isFocusActive, protectedApps
+    ) { apps, favPkgs, focusActive, protPkgs ->
         val appMap = apps.associateBy { it.packageName }
-        favPkgs.mapNotNull { appMap[it] }
+        val finalFavPkgs = if (focusActive) favPkgs.filter { it !in protPkgs } else favPkgs
+        finalFavPkgs.mapNotNull { appMap[it] }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val otherApps: StateFlow<List<AppInfo>> = combine(
-        _apps, favoritePackageNames
-    ) { apps, favPkgs ->
+        _apps, favoritePackageNames, isFocusActive, protectedApps
+    ) { apps, favPkgs, focusActive, protPkgs ->
         val favSet = favPkgs.toHashSet()
-        apps.filter { it.packageName !in favSet }
+        val baseList = apps.filter { it.packageName !in favSet }
+        if (focusActive) {
+            baseList.filter { it.packageName !in protPkgs }
+        } else {
+            baseList
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val protectedApps: StateFlow<Set<String>> = mindfulDelayRepository.protectedAppsFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     private val recentPackageNames: StateFlow<List<String>> = recentAppsRepository.recentAppsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val recentApps: StateFlow<List<AppInfo>> = combine(
-        _apps, recentPackageNames
-    ) { apps, recentPkgs ->
+        _apps, recentPackageNames, isFocusActive, protectedApps
+    ) { apps, recentPkgs, focusActive, protPkgs ->
         val appMap = apps.associateBy { it.packageName }
-        recentPkgs.mapNotNull { appMap[it] }
+        val finalRecentPkgs = if (focusActive) recentPkgs.filter { it !in protPkgs } else recentPkgs
+        finalRecentPkgs.mapNotNull { appMap[it] }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val showFavorites: StateFlow<Boolean> = settingsRepository.showFavoritesFlow
@@ -86,12 +103,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     val filteredApps: StateFlow<List<AppInfo>> = combine(
-        _apps, _searchQuery
-    ) { apps, query ->
-        if (query.isBlank()) apps
+        _apps, _searchQuery, isFocusActive, protectedApps
+    ) { apps, query, focusActive, protPkgs ->
+        val baseApps = if (focusActive) apps.filter { it.packageName !in protPkgs } else apps
+        if (query.isBlank()) baseApps
         else {
             val lowerQuery = query.lowercase()
-            apps.filter { it.appName.lowercase().contains(lowerQuery) }
+            baseApps.filter { it.appName.lowercase().contains(lowerQuery) }
         }
     }.distinctUntilChanged()
         .flowOn(Dispatchers.Default)
@@ -123,6 +141,32 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun recordAppLaunch(packageName: String) {
         viewModelScope.launch(Dispatchers.IO) {
             recentAppsRepository.recordLaunch(packageName)
+        }
+    }
+
+    fun setFocusActive(active: Boolean) {
+        _isFocusActive.value = active
+    }
+
+    val apps: StateFlow<List<AppInfo>> = _apps.asStateFlow()
+
+    private val _focusDurationMinutes = MutableStateFlow(25)
+    val focusDurationMinutes = _focusDurationMinutes.asStateFlow()
+
+    private val _breakDurationMinutes = MutableStateFlow(5)
+    val breakDurationMinutes = _breakDurationMinutes.asStateFlow()
+
+    fun setFocusDuration(minutes: Int) {
+        _focusDurationMinutes.value = minutes
+    }
+
+    fun setBreakDuration(minutes: Int) {
+        _breakDurationMinutes.value = minutes
+    }
+
+    fun setAppProtected(packageName: String, protected: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mindfulDelayRepository.setProtected(packageName, protected)
         }
     }
 

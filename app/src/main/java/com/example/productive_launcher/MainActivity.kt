@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.view.WindowManager
+import android.os.Build
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -36,11 +39,20 @@ import com.example.productive_launcher.ui.settings.SettingsViewModel
 import com.example.productive_launcher.ui.theme.ProductivelauncherTheme
 
 class MainActivity : ComponentActivity() {
+    private var launcherViewModel: LauncherViewModel? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.setBackgroundDrawable(ColorDrawable(0))
         Log.d("Wallpaper", "MainActivity: window background set to transparent")
+
+        // Clear custom wallpaper cache to force the new default wallpaper
+        val wallpaperFile = java.io.File(filesDir, "current_wallpaper.png")
+        if (wallpaperFile.exists()) {
+            wallpaperFile.delete()
+        }
+
         setContent {
             val settingsRepository = remember {
                 SettingsRepository(SettingsDataStore(this@MainActivity))
@@ -48,9 +60,14 @@ class MainActivity : ComponentActivity() {
             val themeMode by settingsRepository.themeModeFlow.collectAsState(
                 initial = com.example.productive_launcher.data.model.ThemeMode.SYSTEM
             )
+            val launcherViewModel: LauncherViewModel = viewModel()
+            this@MainActivity.launcherViewModel = launcherViewModel
+            val isFocusActiveState by launcherViewModel.isFocusActive.collectAsState()
 
             Box(modifier = Modifier.fillMaxSize()) {
                 WallpaperBackground(
+                    isFocusActive = isFocusActiveState,
+                    viewModel = launcherViewModel,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -62,7 +79,22 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Log.d("Wallpaper", "THEME CHECK: Surface color=Color.Transparent — background is transparent")
                         val navController = rememberNavController()
-                        val launcherViewModel: LauncherViewModel = viewModel()
+
+                        LaunchedEffect(isFocusActiveState) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                if (isFocusActiveState) {
+                                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                                    window.attributes = window.attributes.apply {
+                                        blurBehindRadius = 60
+                                    }
+                                } else {
+                                    window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                                    window.attributes = window.attributes.apply {
+                                        blurBehindRadius = 0
+                                    }
+                                }
+                            }
+                        }
 
                         NavHost(
                             navController = navController,
@@ -130,6 +162,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+
 
     private fun launchApp(appInfo: AppInfo) {
         val intent: Intent? = appInfo.launchIntent
